@@ -122,10 +122,12 @@
   table.lines tr.line .inclusions .check { color: #2E3A28; }
 
   .totals { display: flex; justify-content: flex-end; margin-top: 16px; }
-  .totals__box { width: 280px; font-size: 10.5px; }
+  .totals__box { width: 320px; font-size: 10.5px; }
   .totals__row { display: flex; justify-content: space-between; padding: 4px 0; color: #5F5E5A; }
   .totals__row .v { font-variant-numeric: tabular-nums; }
-  .totals__vat { color: #888780; font-size: 9.5px; border-top: 0.5px dashed #C8A878; margin-top: 4px; padding-top: 6px; }
+  .totals__subhead { color: #1F2A23; font-weight: 500; padding-top: 6px; border-top: 1px solid #1F2A23; margin-top: 4px; }
+  .totals__vat { color: #1F2A23; padding-top: 4px; }
+  .totals__vat .v { font-weight: 500; }
   .totals__grand {
     display: flex; justify-content: space-between; align-items: baseline;
     padding: 12px 14px; margin-top: 8px;
@@ -205,6 +207,40 @@
   .footer__meta { font-size: 8.5px; color: #B4B2A9; margin-top: 4px; }
 
   .strip--bottom { margin-top: 16px; }
+
+  /* ── Appendix A: Technical Specification (page 2) ──────────────── */
+  .page-break { page-break-before: always; height: 0; }
+  .appendix { padding-top: 18px; }
+  .appendix__head { margin-bottom: 16px; }
+  .appendix__label { font-size: 9px; color: #C8A878; letter-spacing: 2.5px; font-weight: 500; }
+  .appendix__title { font-size: 16px; color: #1F2A23; letter-spacing: 2px; font-weight: 500; margin-top: 4px; }
+  .appendix__sub { font-size: 9px; color: #888780; margin-top: 4px; letter-spacing: 0.6px; }
+
+  table.spec { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 10px; }
+  table.spec tr.spec__cat td {
+    padding: 12px 0 5px; font-size: 8.5px; color: #2E3A28;
+    letter-spacing: 1.6px; font-weight: 500; border-bottom: 1px solid #2E3A28;
+  }
+  table.spec td { padding: 7px 0; vertical-align: top; }
+  table.spec td.k { color: #888780; width: 140px; }
+  table.spec td.v { color: #1F2A23; }
+
+  .not-included {
+    margin-top: 18px; padding: 14px 16px;
+    background: #F5F1E8;
+    border-left: 3px solid #B14F1F;
+    border-radius: 4px;
+  }
+  .not-included__title { font-size: 8.5px; color: #B14F1F; letter-spacing: 1.7px; font-weight: 500; margin-bottom: 6px; }
+  .not-included ul { margin: 0; padding-left: 14px; font-size: 9.5px; line-height: 1.75; color: #1F2A23; }
+  .not-included li { margin: 2px 0; }
+
+  .timing { margin-top: 18px; }
+  .timing__title { font-size: 8.5px; color: #888780; letter-spacing: 2px; margin-bottom: 6px; }
+  .timing__table { width: 100%; font-size: 10px; line-height: 1.7; border-collapse: collapse; }
+  .timing__table td { padding: 5px 0; vertical-align: top; border-bottom: 0.5px solid #E8E2D2; }
+  .timing__table td.k { color: #888780; width: 160px; }
+  .timing__table td.v { color: #1F2A23; }
 </style>
 </head>
 <body>
@@ -308,10 +344,11 @@
 
     <div class="totals">
       <div class="totals__box">
-        <div class="totals__row"><span>Үндсэн багц</span><span class="v">{{tier_subtotal_fmt}}</span></div>
-        <div class="totals__row"><span>Нэмэлт үйлчилгээ</span><span class="v">{{addons_subtotal_fmt}}</span></div>
-        <div class="totals__row"><span>Тээврийн үйлчилгээ</span><span class="v">{{shuttle_subtotal_fmt}}</span></div>
-        <div class="totals__row totals__vat"><span>НӨАТ 10% (багтсан)</span><span class="v">{{vat_included_fmt}}</span></div>
+        <div class="totals__row"><span>Үндсэн багц (НӨАТ-гүй)</span><span class="v">{{tier_excl_vat_fmt}}</span></div>
+        <div class="totals__row"><span>Нэмэлт үйлчилгээ (НӨАТ-гүй)</span><span class="v">{{addons_excl_vat_fmt}}</span></div>
+        <div class="totals__row"><span>Тээврийн үйлчилгээ (НӨАТ-гүй)</span><span class="v">{{shuttle_excl_vat_fmt}}</span></div>
+        <div class="totals__row totals__subhead"><span>Дэд дүн (НӨАТ-гүй)</span><span class="v">{{subtotal_excl_vat_fmt}}</span></div>
+        <div class="totals__row totals__vat"><span>НӨАТ 10%</span><span class="v">{{vat_amount_fmt}}</span></div>
         <div class="totals__grand"><span class="lbl">НИЙТ ДҮН</span><span class="v">{{grand_total_fmt}} ₮</span></div>
       </div>
     </div>
@@ -343,11 +380,10 @@
     <div class="terms">
       <div class="terms__title">НӨХЦӨЛ</div>
       <ol>
-        <li>Үнэ НӨАТ багтсан. Захиалга 30% урьдчилгаа төлөгдсөнөөр баталгаажна.</li>
+        <li>Үнэ НӨАТ багтсан. Захиалга гэрээнд гарын үсэг зурж 30% урьдчилгаа төлөгдсөнөөр албан ёсоор баталгаажна.</li>
         <li>Цуцлалт: 14-өөс дээш хоногийн өмнө 100% буцаалт; 7–13 хоногийн өмнө 50%; 7 хоногийн дотор буцаалтгүй.</li>
-        <li>Цаг агаарын онцгой нөхцөл, байгалийн гамшиг, давагдашгүй хүчин зүйл үүссэн тохиолдолд хугацааг харилцан тохиролцож шилжүүлнэ.</li>
+        <li>Дэлгэрэнгүй эрх үүрэг, хариуцлагын нөхцөл нь "Аялал зохион байгуулах гэрээ"-нд тусгагдана. Гэрээний бусад заалт энд тусгагдсан нөхцөлөөс илүү хүчин төгөлдөр.</li>
         <li>M EVENT-ээс нэмэлт тоног төхөөрөмж захиалбал NOMAAD захиалагчдад 20% хөнгөлөлт.</li>
-        <li>Үнийн санал нь хүчинтэй хугацаанд гарын үсэг зурснаар хүлээн зөвшөөрөгдсөнд тооцно.</li>
       </ol>
     </div>
 
@@ -389,10 +425,11 @@
           <div class="sig-col__title">БЭЛТГЭСЭН</div>
           <div class="sig-col__prepared">
             <div class="sig-col__prepared-info">
-              <div class="name">Г. Мөнх-Учрал</div>
-              <div class="role">Захирал</div>
+              <div class="name">Б. Дэлгэрбат</div>
+              <div class="role">Борлуулалтын менежер</div>
               <div class="role">NOMAAD Camp · Чимун ХХК</div>
-              <div class="phone">+976 8800-6790</div>
+              <div class="phone">+976 9917-9417</div>
+              <div class="role" style="margin-top:4px; font-size: 9px;">Баталгаажуулсан: Г. Мөнх-Учрал · Захирал</div>
             </div>
             <div class="sig-col__stamp" aria-hidden="true"></div>
           </div>
@@ -402,7 +439,7 @@
 
     <div class="footer">
       <div class="footer__brand">NOMAAD CAMP · ENTER THE MOMENT</div>
-      <div class="footer__meta">nomaadcamp.com · {{quote_number}} · 1 / 1</div>
+      <div class="footer__meta">nomaadcamp.com · {{quote_number}}</div>
     </div>
 
     <div class="strip strip--bottom"><div class="strip__accent"></div></div>

@@ -106,11 +106,91 @@ const year = new Date().getFullYear();
 const quoteNumber = `NC-${year}-${String(counter).padStart(4, '0')}`;
 
 // ---------- 4. Dates: issue + validity. ----------
+// Validity = 30 days (corporate decision cycle is 3-4 weeks).
 const today = new Date();
 const issueDate = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
 const validUntilDate = new Date(today);
-validUntilDate.setDate(validUntilDate.getDate() + 14);
+validUntilDate.setDate(validUntilDate.getDate() + 30);
 const validUntil = `${validUntilDate.getFullYear()}.${String(validUntilDate.getMonth() + 1).padStart(2, '0')}.${String(validUntilDate.getDate()).padStart(2, '0')}`;
+
+// ---------- 4b. Ex-VAT math (procurement-friendly). ----------
+// Site sends VAT-INCLUSIVE prices. Convert to ex-VAT for the totals breakdown.
+const subtotalExclVat = grandTotal - vatIncluded;
+const tierExclVat     = Math.round(tierSubtotal / 1.1);
+const addonsExclVat   = Math.round(addonsSubtotal / 1.1);
+const shuttleExclVat  = Math.round(shuttleSubtotal / 1.1);
+
+// ---------- 4c. Camp/Tier technical spec lookup (kept for future contract auto-fill). ----------
+const CAMP_SPECS = {
+  'NOMAAD Summit': { stage: '8м × 4м (32м²)', sound: '16,000W', wc: 8, dining: '540м²' },
+  'NOMAAD Meadow': { stage: '6м × 4м (24м²)', sound: '5,000W',  wc: 6, dining: '300м²' },
+  'NOMAAD Grove':  { stage: '4м × 3м (12м²)', sound: '5,000W',  wc: 4, dining: '200м²' }
+};
+const campSpec = CAMP_SPECS[camp] || CAMP_SPECS['NOMAAD Meadow'];
+const tentCount = Math.ceil(guests / 6);
+
+// Spec sheet kept disabled for QUOTE; tech specs belong in the CONTRACT instead.
+const specSheetHtml = '';
+/* OLD spec sheet HTML removed — was overkill for a quote. Reinstate only if
+   needed for very large enterprise quotes ($30K+):
+const _DISABLED_SPEC_HTML = `
+  <div class="page-break"></div>
+  <div class="strip"><div class="strip__accent"></div></div>
+  <div class="appendix">
+    <div class="appendix__head">
+      <div class="appendix__label">ХАВСРАЛТ А</div>
+      <div class="appendix__title">ТЕХНИКИЙН ТОДОРХОЙЛОЛТ</div>
+      <div class="appendix__sub">${quoteNumber} · ${camp} · ${tier} багц · ${guests} хүн</div>
+    </div>
+
+    <table class="spec">
+      <tr class="spec__cat"><td colspan="2">БАЙРЛАХ ОРЧИН</td></tr>
+      <tr><td class="k">Майхан</td><td class="v">${tentCount} ширхэг · 5м диаметр · 6 хүний багтаамж</td></tr>
+      <tr><td class="k">Майхны дотор</td><td class="v">6 ор, бүтээлэг (Стандарт/Премиумд sleeping bag багтсан)</td></tr>
+
+      <tr class="spec__cat"><td colspan="2">ТАЙЗ · ХӨГЖИМ</td></tr>
+      <tr><td class="k">Тайзны хэмжээ</td><td class="v">${campSpec.stage.size}, өндөр ${campSpec.stage.height}, ${campSpec.stage.frame}</td></tr>
+      <tr><td class="k">Хөгжмийн чадал</td><td class="v">${campSpec.sound.power} · 3–5W/хүн стандартад нийцсэн</td></tr>
+      <tr><td class="k">Тоног төхөөрөмж</td><td class="v">${campSpec.sound.mics}, шаардлагатай цахилгаан хангамж бүрэн</td></tr>
+
+      <tr class="spec__cat"><td colspan="2">ХООЛ · ХҮЛЭЭН АВАЛТ</td></tr>
+      <tr><td class="k">Хоолны асар</td><td class="v">${campSpec.dining.area}${campSpec.dining.expandable ? ' (' + campSpec.dining.expandable + ')' : ''}</td></tr>
+      <tr><td class="k">Хоолны үйлчилгээ</td><td class="v">Үндсэн сервис (порц) · Буфет хэлбэрт шилжүүлэх боломжтой</td></tr>
+
+      <tr class="spec__cat"><td colspan="2">АРИУН ЦЭВЭР · ҮЙЛЧИЛГЭЭ</td></tr>
+      <tr><td class="k">Бие засах байр</td><td class="v">${campSpec.wc.count} өрөө · ${campSpec.wc.type}</td></tr>
+      <tr><td class="k">Цэвэрлэгээ</td><td class="v">Тогтмол үйлчилгээ · 600+ хүний үед 24 цагийн цэвэрлэгээний баг</td></tr>
+
+      <tr class="spec__cat"><td colspan="2">УУЛЗАЛТ · АЮУЛГҮЙ БАЙДАЛ</td></tr>
+      <tr><td class="k">Сүлжээ</td><td class="v">Unitel, Mobicom үүрэн сүлжээ холбогдсон</td></tr>
+      <tr><td class="k">Эмнэлэг (Премиум)</td><td class="v">${guests <= 300 ? '1 эмч + 1 сувилагч' : guests <= 500 ? '1 эмч + 2 сувилагч' : 'Өргөтгөсөн эмнэлгийн баг + standby тээвэр'}</td></tr>
+      <tr><td class="k">Хамгаалалт (Премиум)</td><td class="v">Тайван арга хэмжээнд 100 зочин/1 ажилтан, оройн хөтөлбөртэй үед 30–50 зочин/1 ажилтан</td></tr>
+    </table>
+
+    <div class="not-included">
+      <div class="not-included__title">★ БАГТААГҮЙ ЗҮЙЛС</div>
+      <ul>
+        <li>Согтууруулах ундаа (захиалагч өөрөө бэлтгэн авч ирнэ; Bartender үйлчилгээ зөвхөн labor)</li>
+        <li>Live stream / video production (нэмэлтээр захиалбал М EVENT-р зохион байгуулах боломжтой)</li>
+        <li>Захиалагчийн зочдын тусдаа тээвэр (45 хүний автобуснаас гадуурх хувийн машин)</li>
+        <li>Гэрэл зураг, видео материалын commercial usage rights</li>
+        <li>Захиалагчийн брэндийн тусгай хэвлэл, тохижилт, декор</li>
+        <li>Insurance / даатгалын зардал (өөрсдөө хариуцна)</li>
+      </ul>
+    </div>
+
+    <div class="timing">
+      <div class="timing__title">ХУГАЦААНЫ ЗОХИОН БАЙГУУЛАЛТ</div>
+      <table class="timing__table">
+        <tr><td class="k">NOMAAD баг ирэх</td><td class="v">Арга хэмжээнээс 4 цагийн өмнө (бэлтгэл, тоног төхөөрөмжийн суурилуулалт)</td></tr>
+        <tr><td class="k">Зочид буух</td><td class="v">${fmtDateTime(startDt)}</td></tr>
+        <tr><td class="k">Зочид зайлах</td><td class="v">${fmtDateTime(endDt)}</td></tr>
+        <tr><td class="k">NOMAAD баг гарах</td><td class="v">Арга хэмжээний дараа 3 цагийн дотор (буулгалт, цэвэрлэгээ)</td></tr>
+        <tr><td class="k">Урт хугацаагаар захиалга</td><td class="v">Дээрх цагийн хязгаараас гадуур ашиглавал нэмэлт төлбөр харилцан тохиролцоно</td></tr>
+      </table>
+    </div>
+  </div>`;
+*/
 
 // ---------- 5. Build the inclusions checklist HTML. ----------
 function inclusionsHtml(labels, drinkChoice) {
@@ -280,6 +360,12 @@ const variables = {
   '{{shuttle_subtotal_fmt}}': fmt(shuttleSubtotal),
   '{{vat_included_fmt}}':     fmt(vatIncluded),
   '{{grand_total_fmt}}':      fmt(grandTotal),
+  '{{tier_excl_vat_fmt}}':    fmt(tierExclVat),
+  '{{addons_excl_vat_fmt}}':  fmt(addonsExclVat),
+  '{{shuttle_excl_vat_fmt}}': fmt(shuttleExclVat),
+  '{{subtotal_excl_vat_fmt}}': fmt(subtotalExclVat),
+  '{{vat_amount_fmt}}':       fmt(vatIncluded),
+  '{{spec_sheet_html}}':      specSheetHtml,
   '{{deposit_30_fmt}}':       fmt(deposit30),
   '{{balance_70_fmt}}':       fmt(balance70),
   '{{inclusions_html}}':      inclusionsHtml(tierInclusions, visualFeature.toLowerCase().replace(/\s/g, '_')),
