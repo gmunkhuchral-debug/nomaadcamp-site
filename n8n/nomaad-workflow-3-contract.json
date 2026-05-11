@@ -3,19 +3,81 @@
   "nodes": [
     {
       "parameters": {
-        "path": "nomaad-contract-confirm",
-        "responseMode": "lastNode",
-        "options": {}
+        "documentId": {
+          "__rl": true,
+          "value": "16pHiShilnG-QdZtc2ciB5JeP_aslZRcqpQqEJvD-0wA",
+          "mode": "list",
+          "cachedResultName": "nomaad_quote_log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16pHiShilnG-QdZtc2ciB5JeP_aslZRcqpQqEJvD-0wA/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 529201537,
+          "mode": "list",
+          "cachedResultName": "Quote Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16pHiShilnG-QdZtc2ciB5JeP_aslZRcqpQqEJvD-0wA/edit#gid=529201537"
+        },
+        "event": "rowUpdate",
+        "options": {
+          "valueRender": "UNFORMATTED_VALUE",
+          "columnsToWatch": [
+            "Төлөв"
+          ]
+        },
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        }
       },
-      "id": "wh3-trigger",
-      "name": "Webhook Contract",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1.1,
+      "id": "wh3-trigger-v2",
+      "name": "Sheets Trigger · On row update",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
       "position": [
         -1280,
         -80
       ],
-      "webhookId": "nomaad-wh3-contract-22381e10"
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CRED_ID",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "if-toluv-geree",
+              "leftValue": "={{ $json['Төлөв'] }}",
+              "rightValue": "ГЭРЭЭ",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wh3-filter",
+      "name": "IF · Төлөв = ГЭРЭЭ",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1120,
+        -80
+      ]
     },
     {
       "parameters": {
@@ -37,7 +99,7 @@
           "values": [
             {
               "lookupColumn": "Үнийн саналын дугаар",
-              "lookupValue": "={{ $json.query.id }}"
+              "lookupValue": "={{ $json['Үнийн саналын дугаар'] }}"
             }
           ]
         },
@@ -48,7 +110,7 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        -1040,
+        -880,
         -80
       ],
       "credentials": {
@@ -67,7 +129,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -800,
+        -640,
         -80
       ]
     },
@@ -291,7 +353,7 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        -560,
+        -400,
         -200
       ],
       "credentials": {
@@ -319,7 +381,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        -560,
+        -400,
         40
       ],
       "credentials": {
@@ -381,7 +443,7 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        -320,
+        -160,
         -80
       ],
       "credentials": {
@@ -393,7 +455,18 @@
     }
   ],
   "connections": {
-    "Webhook Contract": {
+    "Sheets Trigger · On row update": {
+      "main": [
+        [
+          {
+            "node": "IF · Төлөв = ГЭРЭЭ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF · Төлөв = ГЭРЭЭ": {
       "main": [
         [
           {
@@ -401,7 +474,8 @@
             "type": "main",
             "index": 0
           }
-        ]
+        ],
+        []
       ]
     },
     "Sheets · Find quote row": {
