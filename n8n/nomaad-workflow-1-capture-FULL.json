@@ -68,7 +68,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://chrome.browserless.io/pdf?token=2UTvlG4DqiRU5100c3b9e87c6ab72e2c8b0b2800",
+        "url": "https://chrome.browserless.io/pdf?token=2UTvlG4DqiRU5100c3b9e87c6ab72e2c8b0b28009730a65a6",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json.pdf_request_body }}",
