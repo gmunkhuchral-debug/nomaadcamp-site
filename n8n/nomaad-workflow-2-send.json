@@ -109,10 +109,11 @@
           "appendAttribution": false,
           "replyTo": "hello@nomaadcamp.com"
         },
-        "operation": "send"
+        "operation": "create",
+        "resource": "draft"
       },
       "id": "gmail-customer",
-      "name": "Gmail · Customer",
+      "name": "Gmail · Draft Customer",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
@@ -378,7 +379,7 @@
       "main": [
         [
           {
-            "node": "Gmail · Customer",
+            "node": "Gmail · Draft Customer",
             "type": "main",
             "index": 0
           },
