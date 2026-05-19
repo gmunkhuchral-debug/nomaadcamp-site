@@ -3,20 +3,47 @@
   "nodes": [
     {
       "parameters": {
-        "httpMethod": "POST",
-        "path": "nomaad-contract-trigger",
-        "responseMode": "lastNode",
-        "options": {}
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "event": "rowUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "16pHiShilnG-QdZtc2ciB5JeP_aslZRcqpQqEJvD-0wA",
+          "cachedResultName": "nomaad_quote_log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16pHiShilnG-QdZtc2ciB5JeP_aslZRcqpQqEJvD-0wA/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": 529201537,
+          "cachedResultName": "Quote Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16pHiShilnG-QdZtc2ciB5JeP_aslZRcqpQqEJvD-0wA/edit#gid=529201537"
+        },
+        "options": {
+          "valueRender": "FORMATTED_VALUE",
+          "dateTimeRenderOption": "FORMATTED_STRING"
+        }
       },
-      "id": "webhook-contract-001",
-      "name": "Webhook · Contract Trigger",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
+      "id": "sheets-trigger-wf3-001",
+      "name": "Sheets Trigger · Төлөв update",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
       "position": [
         240,
         300
       ],
-      "webhookId": "nomaad-contract-trigger"
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "REPLACE_IF_NEEDED",
+          "name": "Google Sheets Trigger account"
+        }
+      }
     },
     {
       "parameters": {
@@ -484,7 +511,7 @@
         ]
       ]
     },
-    "Webhook · Contract Trigger": {
+    "Sheets Trigger · Төлөв update": {
       "main": [
         [
           {
