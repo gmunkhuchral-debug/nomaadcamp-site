@@ -47,8 +47,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        4528,
-        3200
+        460,
+        300
       ]
     },
     {
@@ -82,8 +82,8 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        4768,
-        3168
+        680,
+        300
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -94,15 +94,15 @@
     },
     {
       "parameters": {
-        "jsCode": "// =====================================================================\n// NOMAAD Camp · Workflow 3 · Contract Confirmed (Code node)\n// =====================================================================\n// Input: Quote Log-ийн нэг мөр\n// Output: Гэрээний placeholder бүх утга + finance log + email\n\nconst row = $input.first().json;\n\nlet p;\ntry { p = JSON.parse(row[\"Анхны өгөгдөл\"] || \"{}\"); }\ncatch (e) { p = {}; }\n\nconst num = (v, d = 0) => {\n  if (v === undefined || v === null || v === '') return d;\n  const cleaned = String(v).replace(/[₮,$,\\s]/g, '');\n  const n = Number(cleaned);\n  return Number.isFinite(n) ? n : d;\n};\nconst str = (v, d = '') => (v === undefined || v === null) ? d : String(v).trim();\nconst fmt = n => Number(n).toLocaleString('en-US');\n\n// ---- Mongolian number → words (simple cyrillic) ----\nfunction numberToMongolWords(n) {\n  if (!n || n === 0) return 'тэг';\n  const units = ['', 'нэг', 'хоёр', 'гурван', 'дөрвөн', 'таван', 'зургаан', 'долоон', 'найман', 'есөн'];\n  const tens  = ['', 'арван', 'хорин', 'гучин', 'дөчин', 'тавин', 'жаран', 'далан', 'наян', 'ерэн'];\n  const hundreds = ['', 'нэг зуун', 'хоёр зуун', 'гурван зуун', 'дөрвөн зуун', 'таван зуун', 'зургаан зуун', 'долоон зуун', 'найман зуун', 'есөн зуун'];\n  \n  function under1000(x) {\n    if (x === 0) return '';\n    const h = Math.floor(x / 100);\n    const t = Math.floor((x % 100) / 10);\n    const u = x % 10;\n    let parts = [];\n    if (h) parts.push(hundreds[h]);\n    if (t) parts.push(tens[t]);\n    if (u) parts.push(units[u]);\n    return parts.join(' ');\n  }\n  \n  let result = '';\n  const billions = Math.floor(n / 1000000000);\n  const millions = Math.floor((n % 1000000000) / 1000000);\n  const thousands = Math.floor((n % 1000000) / 1000);\n  const rest = n % 1000;\n  \n  if (billions) result += under1000(billions) + ' тэрбум ';\n  if (millions) result += under1000(millions) + ' сая ';\n  if (thousands) result += under1000(thousands) + ' мянган ';\n  if (rest) result += under1000(rest);\n  return result.trim();\n}\n\n// ---- Дата ----\nconst quoteNumber  = str(row[\"Үнийн саналын дугаар\"]);\nconst company      = str(row[\"Компанийн нэр\"]) || str(p.company);\nconst taxId        = str(row[\"Регистрийн дугаар\"]) || str(p.customer_tax_id);\nconst contactName  = str(row[\"Холбоо барих хүн\"]) || str(p.contact_name);\nconst phone        = str(row[\"Утас\"]) || str(p.phone);\nconst email        = str(row[\"И-мэйл\"]) || str(p.email);\nconst campFull     = str(row[\"Кемп\"]) || str(p.camp_name);\nconst tier         = str(row[\"Багц\"]) || str(p.package_tier);\nconst guests       = num(row[\"Хүний тоо\"]) || num(p.guest_count) || 0;\nconst startDt      = str(row[\"Эхлэх огноо\"]) || str(p.start_datetime);\nconst endDt        = str(row[\"Дуусах огноо\"]) || str(p.end_datetime);\n\n// NOMAAD Grove → \"Grove\" (after \"NOMAAD \")\nconst campShort = campFull.replace(/^NOMAAD\\s+/i, '');\n\n// ---- Дүн тооцоолол ----\nconst listPrice    = num(row[\"Нийт дүн\"]) || num(p.grand_total);\nconst discount     = num(row[\"Хямдрал ₮\"]);\nconst finalAmount  = num(row[\"Эцсийн гэрээний дүн\"]) || (listPrice - discount);\nconst deposit30    = Math.round(finalAmount * 0.30);\nconst balance70    = finalAmount - deposit30;\nconst vatIncluded  = Math.round(finalAmount / 11);\n\n// Нэг хүний үнэ (per-person)\nconst perPersonPrice = guests > 0 ? Math.round((num(p.tier_subtotal) || finalAmount) / guests) : 0;\nconst addonsSubtotal = num(p.addons_subtotal) + num(p.shuttle_subtotal);\n\n// ---- Огноо задлах ----\nfunction parseDt(s) {\n  const m = String(s).match(/(\\d{4})-(\\d{2})-(\\d{2})(?:[T ](\\d{2}):(\\d{2}))?/);\n  if (!m) return { year: '', month: '', day: '', time: '' };\n  return {\n    year:  m[1],\n    month: String(parseInt(m[2], 10)),\n    day:   String(parseInt(m[3], 10)),\n    time:  (m[4] && m[5]) ? `${m[4]}:${m[5]}` : ''\n  };\n}\nconst startParts = parseDt(startDt);\nconst endParts   = parseDt(endDt);\n\n// Contract date = today\nconst today = new Date();\nconst contractYear  = String(today.getFullYear());\nconst contractMonth = String(today.getMonth() + 1);\nconst contractDay   = String(today.getDate());\n\n// ---- Placeholder map (Google Docs Replace nodes ашиглах) ----\nconst placeholders = {\n  // Гарчиг + БАТЛАВ блок\n  contract_year:        contractYear,\n  contract_month:       contractMonth,\n  contract_day:         contractDay,\n\n  // 1.1 Захиалагч\n  customer_tax_id:      taxId,\n  company_name:         company,\n  contact_position:     'Гүйцэтгэх захирал',\n  contact_name:         contactName,\n\n  // 2.1 Хугацаа\n  start_year:           startParts.year,\n  start_month:          startParts.month,\n  start_day:            startParts.day,\n  start_time:           startParts.time,\n  end_year:             endParts.year,\n  end_month:            endParts.month,\n  end_day:              endParts.day,\n  end_time:             endParts.time,\n\n  // 2.2 Үнэ\n  guest_count:          String(guests),\n  camp_short_name:      campShort,\n  tier:                 tier,\n  per_person_price:     fmt(perPersonPrice),\n  per_person_price_words: numberToMongolWords(perPersonPrice),\n  addons_subtotal:      fmt(addonsSubtotal),\n  addons_subtotal_words: numberToMongolWords(addonsSubtotal),\n  grand_total:          fmt(finalAmount),\n  grand_total_words:    numberToMongolWords(finalAmount),\n\n  // 2.3 — 2.4 Төлбөр\n  deposit_30:           fmt(deposit30),\n  deposit_30_words:     numberToMongolWords(deposit30),\n  balance_70:           fmt(balance70),\n  balance_70_words:     numberToMongolWords(balance70),\n\n  // 4.4 1 цагийн сунгах төлбөр (default = 300,000₮)\n  hourly_extension_fee:       '300,000',\n  hourly_extension_fee_words: numberToMongolWords(300000)\n};\n\n// ---- Email Notify HTML ----\nconst contractEmailHtml = `\n<p>${company}-н гэрээ үүсэхэд бэлэн болсон.</p>\n<table style=\"font-family:Arial;font-size:13px;line-height:1.7;\">\n  <tr><td><b>Дугаар:</b></td><td>${quoteNumber}</td></tr>\n  <tr><td><b>Компани:</b></td><td>${company}</td></tr>\n  <tr><td><b>Холбоо:</b></td><td>${contactName} · ${phone}</td></tr>\n  <tr><td><b>Кемп:</b></td><td>${campFull} · ${tier} · ${guests} хүн</td></tr>\n  <tr><td><b>Огноо:</b></td><td>${startDt} → ${endDt}</td></tr>\n  <tr><td><b>Нийт дүн:</b></td><td>${fmt(finalAmount)}₮</td></tr>\n  <tr><td><b>Урьдчилгаа 30%:</b></td><td>${fmt(deposit30)}₮</td></tr>\n  <tr><td><b>Үлдэгдэл 70%:</b></td><td>${fmt(balance70)}₮</td></tr>\n</table>\n<p>Google Drive дотор гэрээний draft автоматаар үүссэн. Шалгаад зочин руу илгээнэ үү.</p>\n`;\n\n// ---- Финанс мөр ----\nconst financeRow = {\n  quote_number: quoteNumber,\n  company: company,\n  contact_name: contactName,\n  camp: campFull,\n  tier: tier,\n  guests: guests,\n  final_amount: finalAmount,\n  deposit_30: deposit30,\n  balance_70: balance70,\n  vat_included: vatIncluded,\n  start_dt: startDt,\n  end_dt: endDt,\n  created_at: today.toISOString()\n};\n\nreturn {\n  json: {\n    // Bulk placeholders for Google Docs Replace\n    ...placeholders,\n    // Meta\n    quote_number: quoteNumber,\n    company: company,\n    contact_name: contactName,\n    email: email,\n    phone: phone,\n    camp_full: campFull,\n    final_amount: finalAmount,\n    deposit_30: deposit30,\n    balance_70: balance70,\n    contract_email_html: contractEmailHtml,\n    finance_row: financeRow,\n    contract_filename: `${quoteNumber} · ${company} · Гэрээ`,\n    generated_at: today.toLocaleString('mn-MN')\n  }\n};"
+        "jsCode": "// =====================================================================\n// NOMAAD Camp · Workflow 3 · Contract Confirmed (Code node, fixed v2)\n// =====================================================================\n// Input: Quote Log-ийн нэг мөр\n// Output: Гэрээний placeholder бүх утга + finance log + staff email\n\nconst row = $input.first().json;\n\nlet p;\ntry { p = JSON.parse(row[\"Анхны өгөгдөл\"] || \"{}\"); }\ncatch (e) { p = {}; }\n\nconst num = (v, d = 0) => {\n  if (v === undefined || v === null || v === '') return d;\n  const cleaned = String(v).replace(/[₮,$,\\s]/g, '');\n  const n = Number(cleaned);\n  return Number.isFinite(n) ? n : d;\n};\nconst str = (v, d = '') => (v === undefined || v === null) ? d : String(v).trim();\nconst fmt = n => Number(n).toLocaleString('en-US');\n\n// ---- Mongolian number → words (simple cyrillic) ----\nfunction numberToMongolWords(n) {\n  if (!n || n === 0) return 'тэг';\n  const units = ['', 'нэг', 'хоёр', 'гурван', 'дөрвөн', 'таван', 'зургаан', 'долоон', 'найман', 'есөн'];\n  const tens  = ['', 'арван', 'хорин', 'гучин', 'дөчин', 'тавин', 'жаран', 'далан', 'наян', 'ерэн'];\n  const hundreds = ['', 'нэг зуун', 'хоёр зуун', 'гурван зуун', 'дөрвөн зуун', 'таван зуун', 'зургаан зуун', 'долоон зуун', 'найман зуун', 'есөн зуун'];\n\n  function under1000(x) {\n    if (x === 0) return '';\n    const h = Math.floor(x / 100);\n    const t = Math.floor((x % 100) / 10);\n    const u = x % 10;\n    let parts = [];\n    if (h) parts.push(hundreds[h]);\n    if (t) parts.push(tens[t]);\n    if (u) parts.push(units[u]);\n    return parts.join(' ');\n  }\n\n  let result = '';\n  const billions = Math.floor(n / 1000000000);\n  const millions = Math.floor((n % 1000000000) / 1000000);\n  const thousands = Math.floor((n % 1000000) / 1000);\n  const rest = n % 1000;\n\n  if (billions) result += under1000(billions) + ' тэрбум ';\n  if (millions) result += under1000(millions) + ' сая ';\n  if (thousands) result += under1000(thousands) + ' мянган ';\n  if (rest) result += under1000(rest);\n  return result.trim();\n}\n\n// ---- Дата ----\nconst quoteNumber  = str(row[\"Үнийн саналын дугаар\"]);\nconst company      = str(row[\"Компанийн нэр\"]) || str(p.company);\nconst taxId        = str(row[\"Регистрийн дугаар\"]) || str(p.customer_tax_id);\nconst contactName  = str(row[\"Холбоо барих хүн\"]) || str(p.contact_name);\nconst phone        = str(row[\"Утас\"]) || str(p.phone);\nconst email        = str(row[\"И-мэйл\"]) || str(p.email);\nconst campFull     = str(row[\"Кемп\"]) || str(p.camp_name);\nconst tier         = str(row[\"Багц\"]) || str(p.package_tier);\nconst guests       = num(row[\"Хүний тоо\"]) || num(p.guest_count) || 0;\nconst startDt      = row[\"Эхлэх огноо\"] || p.start_datetime || '';\nconst endDt        = row[\"Дуусах огноо\"] || p.end_datetime || '';\n\n// NOMAAD Grove → \"Grove\" (after \"NOMAAD \")\nconst campShort = campFull.replace(/^NOMAAD\\s+/i, '');\n\n// ---- Дүн тооцоолол ----\nconst listPrice    = num(row[\"Нийт дүн\"]) || num(p.grand_total);\nconst discount     = num(row[\"Хямдрал ₮\"]);\nconst finalAmount  = num(row[\"Эцсийн гэрээний дүн\"]) || (listPrice - discount);\nconst deposit30    = Math.round(finalAmount * 0.30);\nconst balance70    = finalAmount - deposit30;\nconst vatIncluded  = Math.round(finalAmount / 11);\n\n// Нэг хүний үнэ (per-person)\nconst perPersonPrice = guests > 0 ? Math.round((num(p.tier_subtotal) || finalAmount) / guests) : 0;\nconst addonsSubtotal = num(p.addons_subtotal) + num(p.shuttle_subtotal);\n\n// ---- Огноо задлах — Google Sheets serial number + ISO string хоёуланг нь танина ----\nfunction parseDt(s) {\n  if (s === null || s === undefined || s === '') {\n    return { year: '', month: '', day: '', time: '' };\n  }\n\n  // 1) Sheets-ийн огнооны serial number (1899-12-30-аас хойших өдөр)\n  //    зарим тохиолдолд string \"46185.375\" хэлбэрээр ирж болно.\n  let asNum;\n  if (typeof s === 'number') {\n    asNum = s;\n  } else if (typeof s === 'string' && /^\\d+(\\.\\d+)?$/.test(s.trim())) {\n    asNum = Number(s.trim());\n  }\n  if (Number.isFinite(asNum) && asNum > 25569 /* 1970-01-01 */ && asNum < 80000) {\n    // Sheets epoch: 1899-12-30 (Lotus 1-2-3 bug-тай адил)\n    const ms = Math.round((asNum - 25569) * 86400000);\n    const d = new Date(ms);\n    if (!isNaN(d.getTime())) {\n      return {\n        year:  String(d.getUTCFullYear()),\n        month: String(d.getUTCMonth() + 1),\n        day:   String(d.getUTCDate()),\n        time:  String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0')\n      };\n    }\n  }\n\n  // 2) ISO эсвэл \"YYYY-MM-DD\" string\n  const m = String(s).match(/(\\d{4})-(\\d{2})-(\\d{2})(?:[T ](\\d{2}):(\\d{2}))?/);\n  if (m) {\n    return {\n      year:  m[1],\n      month: String(parseInt(m[2], 10)),\n      day:   String(parseInt(m[3], 10)),\n      time:  (m[4] && m[5]) ? `${m[4]}:${m[5]}` : ''\n    };\n  }\n\n  // 3) Үлдсэн бүх case-д JS Date парсингаар оролдох\n  const d2 = new Date(s);\n  if (!isNaN(d2.getTime())) {\n    return {\n      year:  String(d2.getFullYear()),\n      month: String(d2.getMonth() + 1),\n      day:   String(d2.getDate()),\n      time:  String(d2.getHours()).padStart(2,'0') + ':' + String(d2.getMinutes()).padStart(2,'0')\n    };\n  }\n\n  return { year: '', month: '', day: '', time: '' };\n}\nconst startParts = parseDt(startDt);\nconst endParts   = parseDt(endDt);\n\n// Contract date = today\nconst today = new Date();\nconst contractYear  = String(today.getFullYear());\nconst contractMonth = String(today.getMonth() + 1);\nconst contractDay   = String(today.getDate());\n\n// ---- Placeholder map (Google Docs Replace nodes ашиглах) ----\nconst placeholders = {\n  // Гарчиг + БАТЛАВ блок\n  contract_year:        contractYear,\n  contract_month:       contractMonth,\n  contract_day:         contractDay,\n\n  // 1.1 Захиалагч\n  customer_tax_id:      taxId,\n  company_name:         company,\n  contact_position:     'Гүйцэтгэх захирал',\n  contact_name:         contactName,\n\n  // 2.1 Хугацаа\n  start_year:           startParts.year,\n  start_month:          startParts.month,\n  start_day:            startParts.day,\n  start_time:           startParts.time,\n  end_year:             endParts.year,\n  end_month:            endParts.month,\n  end_day:              endParts.day,\n  end_time:             endParts.time,\n\n  // 2.2 Үнэ\n  guest_count:          String(guests),\n  camp_short_name:      campShort,\n  tier:                 tier,\n  per_person_price:     fmt(perPersonPrice),\n  per_person_price_words: numberToMongolWords(perPersonPrice),\n  addons_subtotal:      fmt(addonsSubtotal),\n  addons_subtotal_words: numberToMongolWords(addonsSubtotal),\n  grand_total:          fmt(finalAmount),\n  grand_total_words:    numberToMongolWords(finalAmount),\n\n  // 2.3 — 2.4 Төлбөр\n  deposit_30:           fmt(deposit30),\n  deposit_30_words:     numberToMongolWords(deposit30),\n  balance_70:           fmt(balance70),\n  balance_70_words:     numberToMongolWords(balance70),\n\n  // 4.4 1 цагийн сунгах төлбөр (default = 300,000₮)\n  hourly_extension_fee:       '300,000',\n  hourly_extension_fee_words: numberToMongolWords(300000)\n};\n\n// ---- Staff email subject + HTML (Gmail · Notify staff ашигладаг) ----\nconst staffEmailSubject = `[Гэрээ] ${quoteNumber} · ${company} · ${fmt(finalAmount)}₮`;\n\nconst staffEmailHtml = `<!DOCTYPE html><html><body style=\"font-family:Helvetica,Arial,sans-serif;background:#F5F1E8;padding:24px;color:#1a1a1a;\">\n<table cellpadding=\"0\" cellspacing=\"0\" width=\"600\" align=\"center\" style=\"background:#fff;border-radius:8px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.08);\">\n  <tr><td>\n    <h2 style=\"margin:0 0 8px;font-size:20px;color:#0c2e1f;\">📄 Гэрээ үүсэхэд бэлэн боллоо</h2>\n    <p style=\"margin:0 0 18px;color:#4a4a4a;font-size:14px;\">${company}-н гэрээний draft автоматаар Google Drive дотор үүссэн. Шалгаад зочин руу илгээнэ үү.</p>\n    <table cellpadding=\"6\" cellspacing=\"0\" style=\"font-size:13px;line-height:1.6;border-top:1px solid #e5e0d4;border-bottom:1px solid #e5e0d4;width:100%;\">\n      <tr><td style=\"color:#777;width:140px;\">Дугаар</td><td><b>${quoteNumber}</b></td></tr>\n      <tr><td style=\"color:#777;\">Компани</td><td>${company}${taxId ? ' · РД ' + taxId : ''}</td></tr>\n      <tr><td style=\"color:#777;\">Холбоо</td><td>${contactName}${phone ? ' · ' + phone : ''}${email ? ' · ' + email : ''}</td></tr>\n      <tr><td style=\"color:#777;\">Кемп</td><td>${campFull} · ${tier} · ${guests} хүн</td></tr>\n      <tr><td style=\"color:#777;\">Огноо</td><td>${startParts.year}-${startParts.month}-${startParts.day} ${startParts.time} → ${endParts.year}-${endParts.month}-${endParts.day} ${endParts.time}</td></tr>\n    </table>\n    <table cellpadding=\"6\" cellspacing=\"0\" style=\"font-size:13px;line-height:1.6;margin-top:14px;width:100%;\">\n      <tr><td style=\"color:#777;width:140px;\">Нийт дүн</td><td><b style=\"color:#0c2e1f;\">${fmt(finalAmount)}₮</b></td></tr>\n      <tr><td style=\"color:#777;\">Урьдчилгаа 30%</td><td>${fmt(deposit30)}₮</td></tr>\n      <tr><td style=\"color:#777;\">Үлдэгдэл 70%</td><td>${fmt(balance70)}₮</td></tr>\n      <tr><td style=\"color:#777;\">НӨАТ (10% багтсан)</td><td>${fmt(vatIncluded)}₮</td></tr>\n    </table>\n    <p style=\"margin:22px 0 0;font-size:13px;color:#4a4a4a;\">\n      Drive хавтас: <a href=\"https://drive.google.com/drive/folders/1Av7YxSOr-ei182NQpcHp5FlsJOSiQIGb\" style=\"color:#0c2e1f;\">NOMAAD · Гэрээ Үүсгэсэн</a><br>\n      Үүсгэсэн: ${today.toLocaleString('mn-MN')}\n    </p>\n  </td></tr>\n</table>\n</body></html>`;\n\n// ---- Финанс мөр (Sheets · Append to Finance node-д шууд map хийдэг) ----\nconst financeRow = {\n  quote_number: quoteNumber,\n  company: company,\n  contact_name: contactName,\n  camp: campFull,\n  tier: tier,\n  guests: guests,\n  final_amount: finalAmount,\n  deposit_30: deposit30,\n  balance_70: balance70,\n  vat_included: vatIncluded,\n  start_dt: String(startDt),\n  end_dt: String(endDt),\n  created_at: today.toISOString()\n};\n\nreturn {\n  json: {\n    // Bulk placeholders for Google Docs Replace\n    ...placeholders,\n    // Meta\n    quote_number: quoteNumber,\n    company: company,\n    contact_name: contactName,\n    email: email,\n    phone: phone,\n    camp_full: campFull,\n    final_amount: finalAmount,\n    deposit_30: deposit30,\n    balance_70: balance70,\n    vat_included: vatIncluded,\n    // Staff email (Gmail · Notify staff үүнийг ашигладаг)\n    staff_email_subject: staffEmailSubject,\n    staff_email_html: staffEmailHtml,\n    // Финанс ажилбар бүх талбараар\n    finance_row: financeRow,\n    fin_quote_number: financeRow.quote_number,\n    fin_company: financeRow.company,\n    fin_contact_name: financeRow.contact_name,\n    fin_camp: financeRow.camp,\n    fin_tier: financeRow.tier,\n    fin_guests: financeRow.guests,\n    fin_final_amount: financeRow.final_amount,\n    fin_deposit_30: financeRow.deposit_30,\n    fin_balance_70: financeRow.balance_70,\n    fin_vat_included: financeRow.vat_included,\n    fin_start_dt: financeRow.start_dt,\n    fin_end_dt: financeRow.end_dt,\n    fin_created_at: financeRow.created_at,\n    contract_filename: `${quoteNumber} · ${company} · Гэрээ`,\n    generated_at: today.toLocaleString('mn-MN')\n  }\n};"
       },
       "id": "80617873-4a3f-4ce9-b39a-022952f3a48f",
       "name": "Code · Build contract data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4976,
-        3184
+        900,
+        300
       ]
     },
     {
@@ -122,9 +122,141 @@
         },
         "columns": {
           "mappingMode": "defineBelow",
-          "value": {},
+          "value": {
+            "Үнийн саналын дугаар": "={{ $json.fin_quote_number }}",
+            "Компанийн нэр": "={{ $json.fin_company }}",
+            "Холбоо барих хүн": "={{ $json.fin_contact_name }}",
+            "Кемп": "={{ $json.fin_camp }}",
+            "Багц": "={{ $json.fin_tier }}",
+            "Хүний тоо": "={{ $json.fin_guests }}",
+            "Нийт гэрээний дүн": "={{ $json.fin_final_amount }}",
+            "Урьдчилгаа 30%": "={{ $json.fin_deposit_30 }}",
+            "Үлдэгдэл 70%": "={{ $json.fin_balance_70 }}",
+            "НӨАТ": "={{ $json.fin_vat_included }}",
+            "Эхлэх огноо": "={{ $json.fin_start_dt }}",
+            "Дуусах огноо": "={{ $json.fin_end_dt }}",
+            "Үүсгэсэн огноо": "={{ $json.fin_created_at }}"
+          },
           "matchingColumns": [],
-          "schema": [],
+          "schema": [
+            {
+              "id": "Үнийн саналын дугаар",
+              "displayName": "Үнийн саналын дугаар",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Компанийн нэр",
+              "displayName": "Компанийн нэр",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Холбоо барих хүн",
+              "displayName": "Холбоо барих хүн",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Кемп",
+              "displayName": "Кемп",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Багц",
+              "displayName": "Багц",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Хүний тоо",
+              "displayName": "Хүний тоо",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Нийт гэрээний дүн",
+              "displayName": "Нийт гэрээний дүн",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Урьдчилгаа 30%",
+              "displayName": "Урьдчилгаа 30%",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Үлдэгдэл 70%",
+              "displayName": "Үлдэгдэл 70%",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "НӨАТ",
+              "displayName": "НӨАТ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Эхлэх огноо",
+              "displayName": "Эхлэх огноо",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Дуусах огноо",
+              "displayName": "Дуусах огноо",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Үүсгэсэн огноо",
+              "displayName": "Үүсгэсэн огноо",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
           "attemptToConvertTypes": false,
           "convertFieldsToString": false
         },
@@ -135,8 +267,8 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        5216,
-        3104
+        1180,
+        420
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -161,8 +293,8 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        5216,
-        3344
+        1620,
+        220
       ],
       "webhookId": "8329fd92-aa49-428e-b388-f39b014eb649",
       "credentials": {
@@ -224,8 +356,8 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        5456,
-        3280
+        1840,
+        220
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -254,8 +386,8 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        1700,
-        300
+        1180,
+        220
       ]
     },
     {
@@ -452,50 +584,11 @@
       "type": "n8n-nodes-base.googleDocs",
       "typeVersion": 2,
       "position": [
-        1920,
-        300
+        1400,
+        220
       ]
     }
   ],
-  "pinData": {
-    "Sheets Trigger · On row update": [
-      {
-        "json": {
-          "row_number": 3,
-          "Бүртгэлийн огноо": "2026-05-11T19:08:02.942+08:00",
-          "Үнийн саналын дугаар": "NC-2026-0005",
-          "Компанийн нэр": "Таван Богд Финанс ББСБ",
-          "Регистрийн дугаар": "",
-          "Холбоо барих хүн": "Н.Тамир",
-          "Утас": 97688006790,
-          "И-мэйл": "ceo@nomaadcamp.com",
-          "Кемп": "NOMAAD Meadow",
-          "Багц": "Премиум",
-          "Хүний тоо": 200,
-          "Эхлэх огноо": 46185.375,
-          "Дуусах огноо": 46186.458333333336,
-          "Нийт дүн": 60800000,
-          "Урьдчилгаа 30%": 18240000,
-          "PDF файл": "NC-2026-0005_Таван-Богд-Финанс-ББСБ.pdf",
-          "Тэмдэглэл": "",
-          "Дугаарлалт": 6,
-          "Төлөв": "ГЭРЭЭ",
-          "Илгээсэн огноо": "2026-05-11T19:11:12.971+08:00",
-          "Нэмэлт үйлчилгээ": "",
-          "Тээвэр": "Хоног / 2 талдаа · 4 автобус · 4,800,000₮",
-          "Анхны өгөгдөл": "{\"company\":\"Таван Богд Финанс ББСБ\",\"customer_tax_id\":\"\",\"contact_name\":\"Н.Тамир\",\"phone\":\"+97688006790\",\"email\":\"ceo@nomaadcamp.com\",\"camp\":\"NOMAAD Meadow\",\"camp_name\":\"NOMAAD Meadow\",\"tier\":\"Премиум\",\"package_tier\":\"Премиум\",\"visual_feature\":\"\",\"location\":\"\",\"start_datetime\":\"2026-06-12T09:00\",\"end_datetime\":\"2026-06-13T11:00\",\"event_date\":\"2026-06-12T09:00\",\"duration_label\":\"1 шөнө\",\"guest_count\":\"200\",\"tier_base_price\":\"280000\",\"tier_subtotal\":\"56000000\",\"tier_inclusions_json\":\"[\\\"Welcome drink\\\",\\\"Sleeping bag\\\",\\\"Кофе/цайны цэг\\\",\\\"Өдрийн буфет (сайжруулсан)\\\",\\\"Оройн буфет (сайжруулсан)\\\",\\\"Moonbeam Lounge\\\",\\\"Bartender үйлчилгээ (3 цаг)\\\",\\\"Зочдын ариун цэврийн багц\\\",\\\"DJ үйлчилгээ\\\",\\\"Гэрэл зургийн үйлчилгээ\\\",\\\"LED дэлгэц 18м²\\\",\\\"Оройн зууш\\\"]\",\"addons_json\":\"[{\\\"code\\\":\\\"welcome_drink\\\",\\\"name\\\":\\\"Welcome drink\\\",\\\"type\\\":\\\"per-person\\\",\\\"tier_included\\\":true},{\\\"code\\\":\\\"amenity_kit\\\",\\\"name\\\":\\\"Зочдын ариун цэврийн багц\\\",\\\"type\\\":\\\"per-person\\\",\\\"tier_included\\\":true},{\\\"code\\\":\\\"sleeping_bag\\\",\\\"name\\\":\\\"Sleeping bag\\\",\\\"type\\\":\\\"per-person\\\",\\\"tier_included\\\":true},{\\\"code\\\":\\\"coffee_corner\\\",\\\"name\\\":\\\"Кофе/цайны цэг\\\",\\\"type\\\":\\\"per-person\\\",\\\"tier_included\\\":true},{\\\"code\\\":\\\"lunch_upgrade\\\",\\\"name\\\":\\\"Өдрийн буфет (сайжруулсан)\\\",\\\"type\\\":\\\"per-person\\\",\\\"tier_included\\\":true},{\\\"code\\\":\\\"dinner_upgrade\\\",\\\"name\\\":\\\"Оройн буфет (сайжруулсан)\\\",\\\"type\\\":\\\"per-person\\\",\\\"tier_included\\\":true},{\\\"code\\\":\\\"late_snacks\\\",\\\"name\\\":\\\"Оройн зууш\\\",\\\"type\\\":\\\"per-person\\\",\\\"tier_included\\\":true},{\\\"code\\\":\\\"dj_service\\\",\\\"name\\\":\\\"DJ үйлчилгээ\\\",\\\"type\\\":\\\"flat-dynamic\\\",\\\"tier_included\\\":true},{\\\"code\\\":\\\"bartender_service\\\",\\\"name\\\":\\\"Bartender үйлчилгээ\\\",\\\"type\\\":\\\"flat-auto\\\",\\\"tier_included\\\":true},{\\\"code\\\":\\\"moonbeam_lounge\\\",\\\"name\\\":\\\"Moonbeam Lounge\\\",\\\"type\\\":\\\"flat\\\",\\\"tier_included\\\":true},{\\\"code\\\":\\\"led_screen_18m2\\\",\\\"name\\\":\\\"LED дэлгэц 18м²\\\",\\\"type\\\":\\\"flat\\\",\\\"tier_included\\\":true},{\\\"code\\\":\\\"photo_4h\\\",\\\"name\\\":\\\"Гэрэл зургийн үйлчилгээ\\\",\\\"type\\\":\\\"flat\\\",\\\"tier_included\\\":true}]\",\"addon_count\":\"12\",\"addons_subtotal\":\"0\",\"estimated_addon_total\":\"0\",\"shuttle_service\":\"Хоног / 2 талдаа, 1,200,000₮\",\"shuttle_service_label\":\"Хоног / 2 талдаа, 1,200,000₮\",\"shuttle_unit_price\":\"1200000\",\"bus_count\":\"4\",\"shuttle_subtotal\":\"4800000\",\"grand_total\":\"60800000\",\"vat_included\":\"5527273\",\"deposit_30\":\"18240000\",\"balance_70\":\"42560000\",\"value_anchor_json\":\"{\\\"lines\\\":[{\\\"label\\\":\\\"Үндсэн багц (180,000₮ × 200)\\\",\\\"amount\\\":36000000},{\\\"label\\\":\\\"+ Welcome drink (5,000 × 200)\\\",\\\"amount\\\":1000000},{\\\"label\\\":\\\"+ Sleeping bag (15,000 × 200)\\\",\\\"amount\\\":3000000},{\\\"label\\\":\\\"+ Кофе/цайны цэг (6,000 × 200)\\\",\\\"amount\\\":1200000},{\\\"label\\\":\\\"+ Өдрийн буфет (сайжруулсан) (12,000 × 200)\\\",\\\"amount\\\":2400000},{\\\"label\\\":\\\"+ Оройн буфет (сайжруулсан) (12,000 × 200)\\\",\\\"amount\\\":2400000},{\\\"label\\\":\\\"+ Moonbeam Lounge\\\",\\\"amount\\\":500000},{\\\"label\\\":\\\"+ Bartender (3 × 500,000)\\\",\\\"amount\\\":1500000},{\\\"label\\\":\\\"+ Зочдын ариун цэврийн багц (5,000 × 200)\\\",\\\"amount\\\":1000000},{\\\"label\\\":\\\"+ DJ үйлчилгээ\\\",\\\"amount\\\":1000000},{\\\"label\\\":\\\"+ Гэрэл зургийн үйлчилгээ\\\",\\\"amount\\\":500000},{\\\"label\\\":\\\"+ LED дэлгэц 18м²\\\",\\\"amount\\\":1728000},{\\\"label\\\":\\\"+ Оройн зууш (8,000 × 200)\\\",\\\"amount\\\":1600000}],\\\"standalone_total\\\":53828000,\\\"package_total\\\":56000000,\\\"savings\\\":-2172000,\\\"savings_pct\\\":-4}\",\"standalone_equivalent\":\"53828000\",\"package_savings\":\"-2172000\",\"package_savings_pct\":\"-4\",\"notes\":\"\",\"source\":\"nomaadcamp.com\",\"next_counter\":5}",
-          "Уулзалтын огноо": "",
-          "Хямдрал ₮": "",
-          "Уулзалтын тэмдэглэл": "dcsdcsdcsd",
-          "Эцсийн гэрээний дүн": 40000000,
-          "Гэрээ зурсан огноо": ""
-        },
-        "pairedItem": {
-          "item": 0
-        }
-      }
-    ]
-  },
   "connections": {
     "IF · Төлөв = ГЭРЭЭ": {
       "main": [
