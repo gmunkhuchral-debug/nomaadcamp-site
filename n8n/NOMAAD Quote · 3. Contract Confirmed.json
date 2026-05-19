@@ -25,11 +25,7 @@
           "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16pHiShilnG-QdZtc2ciB5JeP_aslZRcqpQqEJvD-0wA/edit#gid=529201537"
         },
         "event": "rowUpdate",
-        "options": {
-          "columnsToWatch": [
-            "Төлөв"
-          ]
-        }
+        "options": {}
       },
       "id": "cec43257-01f2-4285-a612-b83905c34968",
       "name": "Sheets Trigger · On row update",
