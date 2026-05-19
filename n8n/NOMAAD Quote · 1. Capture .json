@@ -501,7 +501,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://chrome.browserless.io/pdf",
+        "url": "https://chrome.browserless.io/pdf?token=2UTvlG4DqiRU5100c3b9e87c6ab72e2c8b0b28009730a65a6",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json.pdf_request_body }}",
@@ -511,9 +511,7 @@
               "responseFormat": "file"
             }
           }
-        },
-        "authentication": "genericCredentialType",
-        "genericAuthType": "queryAuth"
+        }
       },
       "id": "c5bb2f08-cecc-45bd-abd2-9c62200fe53d",
       "name": "HTTP · Browserless PDF",
@@ -522,13 +520,7 @@
       "position": [
         13568,
         14400
-      ],
-      "credentials": {
-        "httpQueryAuth": {
-          "id": "REPLACE_AFTER_IMPORT",
-          "name": "Browserless Token"
-        }
-      }
+      ]
     },
     {
       "parameters": {
